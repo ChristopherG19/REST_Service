@@ -14,58 +14,85 @@ import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.practicaA.apis.dto.InfoDto;
-import com.practicaA.apis.dto.ResultsBody;
+import com.practicaA.apis.dto.ResultsDto;
+import com.practicaA.apis.dto.ResponseBody;
 
 @CrossOrigin
 @RestController
 @RequestMapping("/rest")
 public class RestService {
-	
+
 	RestTemplate restTemplate = new RestTemplate();
-	ObjectMapper mapper = new ObjectMapper();
 
-	@GetMapping(path="/find/{name}")
-	public InfoDto RequestInfo(@PathVariable("name") String param) throws JSONException, JsonMappingException, JsonProcessingException {
+	@GetMapping(path = "/find/{name}")
+	public ResultsDto RequestInfo(@PathVariable("name") String param)
+			throws JSONException, JsonMappingException, JsonProcessingException {
 
-		//String sourceUrl = String.format("https://api.tvmaze.com/search/people?q=%s", param.replaceAll(" ", "%20"));
+		// Se instancia el objeto donde se almacenan los resultados
+		ResultsDto searchResults = new ResultsDto();
+
+		// Se crean variables de las URL
+		String sourceUrl = String.format("https://api.tvmaze.com/search/people?q=%s", param);
 		String sourceUrl2 = String.format("https://itunes.apple.com/search?term=%s", param.replaceAll(" ", "+"));
 
-		// Trim debido a espacios en blanco iniciales
-		String response = restTemplate.getForObject(sourceUrl2, String.class).trim();	
-		
-		JSONObject jsonObj = new JSONObject(response);
-		
-		JSONArray DataResults = jsonObj.getJSONArray("results");
-		int length = DataResults.length();
-		
-		InfoDto ResultsItunes = new InfoDto();
-		ArrayList<ResultsBody> r = new ArrayList<ResultsBody>();
-		
-		for(int i = 0; i < length; i++) {
-			JSONObject jObj = DataResults.getJSONObject(i);
-			
-			ResultsBody objTemp = new ResultsBody();
+		// Se obtiene la información mediante REST
+		String responseTVmaze = restTemplate.getForObject(sourceUrl, String.class);
+		String responseItunes = restTemplate.getForObject(sourceUrl2, String.class);
+
+		responseTVmaze = responseTVmaze.replace("[", "").replace("]", "");
+
+		// Se crean objetos Json para manejar los datos
+		JSONObject jsonObjTVm = new JSONObject(responseTVmaze);
+		JSONObject jsonObjApple = new JSONObject(responseItunes);
+
+		// Se obtienen las secciones objetivo de cada API
+		JSONObject DataResults = jsonObjTVm.getJSONObject("person");
+		JSONArray DataResultsA = jsonObjApple.getJSONArray("results");
+
+		// Se obtiene la cantidad de resultados
+		int lengthA = DataResultsA.length();
+		int lengthT = jsonObjTVm.length();
+
+		// Se crean listas temporales para almacenar los resultados de cada API
+		ArrayList<ResponseBody> r = new ArrayList<ResponseBody>();
+		ArrayList<ResponseBody> r2 = new ArrayList<ResponseBody>();
+
+		// Ciclo para recorrer API de iTunes y obtener los campos requeridos
+		for (int i = 0; i < lengthA; i++) {
+			JSONObject jObj = DataResultsA.getJSONObject(i);
+
+			ResponseBody objTemp = new ResponseBody();
 			objTemp.setName(jObj.getString("artistName"));
 			objTemp.setTrackName(jObj.getString("trackName"));
 			objTemp.setType(jObj.getString("wrapperType"));
 			objTemp.setService("API iTunes");
 			objTemp.setServiceUrl(sourceUrl2);
 
+			// Se agrega el objeto temporal a la lista temporal anteriormente mencionada
 			r.add(objTemp);
-			ResultsItunes.setResults(r);
-			
-			//System.out.println(i+") "+objTemp);
 		}
 
-		//ResponseEntity<String> response2 = restTemplate.getForEntity(sourceUrl2, String.class);
+		// Se agrega la lista de objetos al objeto resultado
+		searchResults.setResults(r);
 		
-		//InfoDto obj2 = mapper.readValue(jsonObj.getJSONArray("results").toString(), InfoDto.class);
-		
-		return ResultsItunes;
+		// Ciclo para recorrer API de TVmaze y obtener los campos requeridos
+		for (int j = 0; j < lengthT; j++) {
+			ResponseBody objTemp = new ResponseBody();
+
+			objTemp.setName(DataResults.get("name").toString());
+			objTemp.setTrackName("");
+			objTemp.setType("person");
+			objTemp.setService("API TVmaze");
+			objTemp.setServiceUrl(sourceUrl);
+
+			// Se agrega el objeto temporal a la segunda lista temporal anteriormente mencionada
+			r2.add(objTemp);
+		}
+
+		// Se juntan todos los resultados en el objeto resultante
+		searchResults.combineResults(r2);
+
+		return searchResults;
 	}
-	
-	
-	
+
 }
