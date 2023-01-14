@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 public class ResultsDto {
 
+	// Arraylist para almacenar todas las coincidencias
 	private ArrayList<ResponseBody> Coincidencias;
 	
 	public ArrayList<ResponseBody> getResults() {
