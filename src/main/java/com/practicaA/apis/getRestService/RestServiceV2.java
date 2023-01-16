@@ -18,14 +18,14 @@ import com.practicaA.apis.dto.ResultsDto;
 import com.practicaA.apis.dto.ResponseBody;
 
 @CrossOrigin
-//@RestController
+@RestController
 @RequestMapping("/rest")
-public class RestService {
+public class RestServiceV2 {
 
 	RestTemplate restTemplate = new RestTemplate();
 
-	@GetMapping(path = "/find/{name}")
-	public ResultsDto RequestInfo(@PathVariable("name") String param)
+	@GetMapping(path = "/find/{name}/{limit}")
+	public ResultsDto RequestInfo(@PathVariable("name") String param, @PathVariable("limit") int cant)
 			throws JSONException, JsonMappingException, JsonProcessingException {
 
 		// Se instancia el objeto donde se almacenan los resultados
@@ -33,7 +33,10 @@ public class RestService {
 
 		// Se crean variables de las URL
 		String sourceUrl = String.format("https://api.tvmaze.com/search/people?q=%s", param);
-		String sourceUrl2 = String.format("https://itunes.apple.com/search?term=%s", param.replaceAll(" ", "+"));
+		String sourceUrl2 = String.format("https://itunes.apple.com/search?term=%s&limit=%d",
+				param.replaceAll(" ", "+"), cant);
+		
+		//System.out.println(sourceUrl2);
 
 		// Se obtiene la información mediante REST
 		String responseTVmaze = restTemplate.getForObject(sourceUrl, String.class);
@@ -47,10 +50,34 @@ public class RestService {
 		// Se obtienen las secciones objetivo de cada API
 		JSONArray DataResultsA = jsonObjApple.getJSONArray("results");
 
-		// Se obtiene la cantidad de resultados
+		// Se obtiene la cantidad de resultados y se busca equilibrar cantidad de datos
 		int lengthA = DataResultsA.length();
 		int lengthT = jsonObjTVm.length();
-
+		
+		int mitad = (int) cant/2;
+		
+		if (lengthT < mitad) {
+			if (lengthA > mitad) {
+				lengthA = mitad + (mitad - lengthT);
+			}
+		} else {
+			if (lengthA < mitad) {
+				lengthT = mitad + (mitad - lengthA);
+			} else {
+				lengthA = mitad;
+				lengthT = mitad;
+			}
+		}
+		
+		if ((lengthA + lengthT) < cant) {
+			int compe = (int) Math.random();
+			if (compe == 0) {
+				lengthA++;
+			} else {
+				lengthT++;
+			}
+		}
+		
 		// Se crean listas temporales para almacenar los resultados de cada API
 		ArrayList<ResponseBody> r = new ArrayList<ResponseBody>();
 		ArrayList<ResponseBody> r2 = new ArrayList<ResponseBody>();
@@ -94,7 +121,7 @@ public class RestService {
 				JSONObject DataResults = jsonObjTVm.getJSONObject(j);
 				ResponseBody objTemp = new ResponseBody();
 
-				objTemp.setName(DataResults.getJSONObject("person").get("name").toString());
+				objTemp.setName(DataResults.getJSONObject("person").getString("name").toString());
 				objTemp.setTrackName("N/A");
 				objTemp.setType("person");
 				objTemp.setService("API TVmaze");

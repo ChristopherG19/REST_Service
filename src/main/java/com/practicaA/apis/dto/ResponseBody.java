@@ -39,13 +39,4 @@ public class ResponseBody {
 		this.serviceUrl = serviceUrl;
 	}
 	
-	@Override
-	public String toString() {
-		return "Artista: "+this.getName()+
-				", Nombre de la cancion: "+this.getTrackName()+
-				", Tipo: "+this.getType()+
-				", Servicio: "+this.getService()+
-				", Url: "+this.getServiceUrl();
-	}
-	
 }
